@@ -1,0 +1,95 @@
+import re
+import subprocess
+import random
+import tkinter as tk
+from tkinter import messagebox, ttk
+
+def get_interfaces():
+    output = subprocess.check_output(["ifconfig"]).decode()
+    interfaces = re.findall(r"(\w+): flags", output)
+    return interfaces
+
+def get_current_mac(interface):
+    try:
+        output = subprocess.check_output(["ifconfig", interface]).decode()
+        mac_address = re.search(r"\w\w:\w\w:\w\w:\w\w:\w\w:\w\w", output)
+        return mac_address.group(0) if mac_address else None
+    except subprocess.CalledProcessError:
+        messagebox.showerror("Error", "Failed to get MAC address. Check your interface.")
+        return None
+
+def change_mac(interface, new_mac):
+    try:
+        subprocess.call(["sudo", "ifconfig", interface, "down"])
+        subprocess.call(["sudo", "ifconfig", interface, "hw", "ether", new_mac])
+        subprocess.call(["sudo", "ifconfig", interface, "up"])
+        messagebox.showinfo("Success", f"MAC address changed to {new_mac}")
+        update_current_mac()
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to change MAC: {e}")
+
+def generate_random_mac():
+    return ":".join(["{:02x}".format(random.randint(0, 255)) for _ in range(6)])
+
+def restore_original_mac():
+    if original_mac:
+        change_mac(interface_var.get(), original_mac)
+        messagebox.showinfo("Info", "MAC address restored to original.")
+
+def update_current_mac():
+    current_mac = get_current_mac(interface_var.get())
+    current_mac_label.config(text=f"Current MAC: {current_mac}")
+
+def apply_mac_change():
+    new_mac = mac_entry.get()
+    if not new_mac:
+        messagebox.showerror("Error", "Please enter a MAC address or generate one.")
+        return
+    change_mac(interface_var.get(), new_mac)
+
+def set_random_mac():
+    random_mac = generate_random_mac()
+    mac_entry.delete(0, tk.END)
+    mac_entry.insert(0, random_mac)
+
+def on_interface_select(event):
+    update_current_mac()
+
+def exit_tool():
+    root.destroy()
+
+# GUI Setup
+root = tk.Tk()
+root.title("RABBIT-MAC-CHANGER Created by ABHINAV VK")
+root.geometry("500x400")
+root.configure(bg='black')
+
+header = tk.Label(root, text="RABBIT-MAC-CHANGER", fg="green", bg="black", font=("Arial", 16, "bold"))
+header.pack(pady=10)
+
+tk.Label(root, text="Select Interface:", fg="white", bg="black", font=("Arial", 12)).pack()
+interface_var = tk.StringVar()
+interfaces = get_interfaces()
+interface_dropdown = ttk.Combobox(root, textvariable=interface_var, values=interfaces, state='readonly', font=("Arial", 12))
+interface_dropdown.pack(pady=5)
+interface_dropdown.bind("<<ComboboxSelected>>", on_interface_select)
+
+current_mac_label = tk.Label(root, text="Current MAC: Not selected", fg="yellow", bg="black", font=("Arial", 12))
+current_mac_label.pack(pady=5)
+
+tk.Label(root, text="New MAC Address:", fg="white", bg="black", font=("Arial", 12)).pack()
+mac_entry = tk.Entry(root, font=("Arial", 12))
+mac_entry.pack(pady=5)
+
+button_style = {'fg': 'black', 'bg': 'green', 'font': ('Arial', 12, 'bold'), 'width': 25, 'pady': 5}
+
+tk.Button(root, text="Generate Random MAC", command=set_random_mac, **button_style).pack(pady=5)
+tk.Button(root, text="Apply MAC Change", command=apply_mac_change, **button_style).pack(pady=5)
+tk.Button(root, text="Restore Original MAC", command=restore_original_mac, **button_style).pack(pady=5)
+
+tk.Button(root, text="Exit", command=exit_tool, fg="black", bg="white", font=("Arial", 10), width=10).place(x=10, y=10)
+
+warning_label = tk.Label(root, text="[WARNING] Use this tool only for ethical and educational purposes!", fg="red", bg="black", font=("Arial", 12, "bold"))
+warning_label.pack(pady=10)
+
+root.mainloop()
