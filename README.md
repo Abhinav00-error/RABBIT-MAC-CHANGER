@@ -1,5 +1,5 @@
 # RABBIT-MAC-CHANGER
-This is a GUI version of MAC-CHANGER CLI 
+This is a GUI version of MAC-SPOOFER
 
 
 The tool is on Devolopment stage it has many bugs and errors best is for using mac changer cli (highly recomonded)
